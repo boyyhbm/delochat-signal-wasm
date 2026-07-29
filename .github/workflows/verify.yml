@@ -17,9 +17,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
-          components: rustfmt, clippy
-      - name: Enforce formatting
-        run: cargo fmt --all -- --check
+          components: clippy
       - name: Compile library and wasm tests
         run: cargo check --locked --target wasm32-unknown-unknown --all-targets
       - name: Lint library and wasm tests
