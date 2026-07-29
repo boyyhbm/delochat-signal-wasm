@@ -39,3 +39,16 @@ jobs:
         run: cargo install wasm-pack --version 0.13.1 --locked
       - name: Run browser tests in Chrome
         run: wasm-pack test --headless --chrome
+      - name: Build release WebAssembly package
+        run: wasm-pack build --target web --release --out-dir release/pkg --out-name signal_wasm
+      - name: Record artifact hashes and source revision
+        run: |
+          sha256sum release/pkg/signal_wasm.js release/pkg/signal_wasm_bg.wasm > release/pkg/SHA256SUMS
+          git rev-parse HEAD > release/pkg/SOURCE_COMMIT
+      - name: Upload reproducible browser package
+        uses: actions/upload-artifact@v4
+        with:
+          name: signal-wasm-web-${{ github.sha }}
+          path: release/pkg
+          if-no-files-found: error
+          retention-days: 90
