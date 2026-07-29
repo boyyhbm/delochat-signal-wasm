@@ -24,3 +24,18 @@ jobs:
         run: cargo check --locked --target wasm32-unknown-unknown --all-targets
       - name: Lint production library
         run: cargo clippy --locked --target wasm32-unknown-unknown --lib -- -D warnings
+
+  browser-test:
+    name: Browser WASM tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install protobuf compiler required by libsignal dependencies
+        run: sudo apt-get update && sudo apt-get install --yes protobuf-compiler
+      - name: Install pinned wasm-pack
+        run: cargo install wasm-pack --version 0.13.1 --locked
+      - name: Run browser tests in Chrome
+        run: wasm-pack test --headless --chrome
