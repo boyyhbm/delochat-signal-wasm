@@ -43,7 +43,9 @@ jobs:
         run: wasm-pack build --target web --release --out-dir release/pkg --out-name signal_wasm
       - name: Record artifact hashes and source revision
         run: |
-          sha256sum release/pkg/signal_wasm.js release/pkg/signal_wasm_bg.wasm > release/pkg/SHA256SUMS
+          cd release/pkg
+          sha256sum signal_wasm.js signal_wasm_bg.wasm > SHA256SUMS
+          cd ../../
           git rev-parse HEAD > release/pkg/SOURCE_COMMIT
       - name: Upload reproducible browser package
         uses: actions/upload-artifact@v4
