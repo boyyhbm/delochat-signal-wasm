@@ -70,6 +70,52 @@ async fn test_protocol_address() {
 }
 
 #[wasm_bindgen_test]
+async fn test_pinned_remote_identity_never_silently_replaces_a_key() {
+    let (local_identity, local_registration_id) = create_test_identity();
+    let mut store = WasmInMemIdentityKeyStore::new(&local_identity, local_registration_id);
+    let address = WasmProtocolAddress::new(
+        "00000000-0000-0000-0000-00000000000B".to_string(),
+        1,
+    )
+    .unwrap();
+    let (remote_identity, _) = create_test_identity();
+    let remote_bytes = remote_identity.public_key().serialize();
+
+    assert!(store
+        .pin_remote_identity(&address, &remote_bytes)
+        .await
+        .expect("first pin must succeed"));
+    assert!(!store
+        .pin_remote_identity(&address, &remote_bytes)
+        .await
+        .expect("identical pin must be idempotent"));
+    assert_eq!(
+        store
+            .pinned_remote_identity(&address)
+            .await
+            .expect("pinned identity lookup must succeed"),
+        Some(remote_bytes.clone())
+    );
+    store
+        .assert_pinned_remote_identity(&address, &remote_bytes)
+        .await
+        .expect("matching pin must be accepted");
+
+    let (replacement_identity, _) = create_test_identity();
+    let replacement_bytes = replacement_identity.public_key().serialize();
+    let replace_error = store
+        .pin_remote_identity(&address, &replacement_bytes)
+        .await
+        .expect_err("a pin replacement must be rejected");
+    assert_eq!(js_error_code(&replace_error), "PinnedIdentityMismatch");
+    let assert_error = store
+        .assert_pinned_remote_identity(&address, &replacement_bytes)
+        .await
+        .expect_err("a non-matching pin must be rejected");
+    assert_eq!(js_error_code(&assert_error), "PinnedIdentityMismatch");
+}
+
+#[wasm_bindgen_test]
 async fn test_pre_key_generation() {
     let (_identity_key_pair, _registration_id) = create_test_identity();
     let mut prekey_store = WasmInMemPreKeyStore::new();

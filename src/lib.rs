@@ -40,6 +40,7 @@ use libsignal_protocol::{
     GenericSignedPreKey,
     IdentityKey,
     IdentityKeyPair,
+    IdentityKeyStore,
     InMemIdentityKeyStore,
     InMemKyberPreKeyStore,
     InMemPreKeyStore,
@@ -383,6 +384,79 @@ impl WasmInMemIdentityKeyStore {
             identity_key_pair.private_key.0,
         );
         WasmInMemIdentityKeyStore(InMemIdentityKeyStore::new(pair, registration_id))
+    }
+
+    /// Return the identity key pinned for `address`, if one exists.
+    ///
+    /// The bytes are public key material.  They are deliberately exposed so a
+    /// client can persist the complete trusted-identity set alongside its
+    /// session records in an encrypted local vault.
+    #[wasm_bindgen(js_name = pinnedRemoteIdentity)]
+    pub async fn pinned_remote_identity(
+        &self,
+        address: &WasmProtocolAddress,
+    ) -> Result<Option<Vec<u8>>, JsValue> {
+        self.0
+            .get_identity(&address.0)
+            .await
+            .map(|identity| identity.map(|key| key.serialize().into_vec()))
+            .map_err(signal_error_to_js)
+    }
+
+    /// Pin a remote public identity key using strict TOFU semantics.
+    ///
+    /// A key may be inserted once, or submitted again when it is byte-for-byte
+    /// identical.  Replacing an existing key is rejected.  Applications must
+    /// make identity rotation an explicit, user-approved flow that discards the
+    /// old session before constructing a new identity store.
+    ///
+    /// Returns `true` when this call created a new pin and `false` for an
+    /// identical, already-pinned key.
+    #[wasm_bindgen(js_name = pinRemoteIdentity)]
+    pub async fn pin_remote_identity(
+        &mut self,
+        address: &WasmProtocolAddress,
+        identity_key: &[u8],
+    ) -> Result<bool, JsValue> {
+        let candidate = IdentityKey::decode(identity_key).map_err(signal_error_to_js)?;
+        match self.0.get_identity(&address.0).await.map_err(signal_error_to_js)? {
+            Some(existing) if existing != candidate => Err(js_error_with_code(
+                "A different remote identity is already pinned for this address",
+                "PinnedIdentityMismatch",
+            )),
+            Some(_) => Ok(false),
+            None => {
+                self.0
+                    .save_identity(&address.0, &candidate)
+                    .await
+                    .map_err(signal_error_to_js)?;
+                Ok(true)
+            }
+        }
+    }
+
+    /// Require a previously pinned remote identity to match `identity_key`.
+    ///
+    /// This is intentionally stricter than libsignal's normal first-use trust
+    /// decision: a missing pin is an error, never implicit approval.
+    #[wasm_bindgen(js_name = assertPinnedRemoteIdentity)]
+    pub async fn assert_pinned_remote_identity(
+        &self,
+        address: &WasmProtocolAddress,
+        identity_key: &[u8],
+    ) -> Result<(), JsValue> {
+        let expected = IdentityKey::decode(identity_key).map_err(signal_error_to_js)?;
+        match self.0.get_identity(&address.0).await.map_err(signal_error_to_js)? {
+            Some(existing) if existing == expected => Ok(()),
+            Some(_) => Err(js_error_with_code(
+                "The pinned remote identity does not match",
+                "PinnedIdentityMismatch",
+            )),
+            None => Err(js_error_with_code(
+                "No remote identity is pinned for this address",
+                "PinnedIdentityMissing",
+            )),
+        }
     }
 }
 

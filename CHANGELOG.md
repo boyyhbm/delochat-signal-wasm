@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.5.0-delochat.1
+
+Fork of upstream `0.5.0` at commit `0952a017e83c19e9cad31769803fb119f895c01e`.
+
+- Added `pinnedRemoteIdentity`, `pinRemoteIdentity`, and
+  `assertPinnedRemoteIdentity` to `WasmInMemIdentityKeyStore`.
+- A remote identity can be inserted once or re-submitted unchanged; a silent
+  replacement is rejected with `PinnedIdentityMismatch`.
+- Added a wasm32 build, formatting, and lint workflow.
+
 ## [0.5.0] - 2026-07-25
 
 Engine-side items of the Ma E2EE tracker: canonical cross-perspective
