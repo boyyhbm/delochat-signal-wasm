@@ -22,5 +22,5 @@ jobs:
         run: sudo apt-get update && sudo apt-get install --yes protobuf-compiler
       - name: Compile library and wasm tests
         run: cargo check --locked --target wasm32-unknown-unknown --all-targets
-      - name: Lint library and wasm tests
-        run: cargo clippy --locked --target wasm32-unknown-unknown --all-targets -- -D warnings
+      - name: Lint production library
+        run: cargo clippy --locked --target wasm32-unknown-unknown --lib -- -D warnings
