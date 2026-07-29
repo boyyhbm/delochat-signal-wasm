@@ -18,6 +18,8 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
           components: clippy
+      - name: Install protobuf compiler required by libsignal dependencies
+        run: sudo apt-get update && sudo apt-get install --yes protobuf-compiler
       - name: Compile library and wasm tests
         run: cargo check --locked --target wasm32-unknown-unknown --all-targets
       - name: Lint library and wasm tests
